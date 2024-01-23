@@ -11,7 +11,7 @@ uniform vec3 _EyePos;
 uniform vec3 _LightDirection = vec3(0.0,-1.0,0.0);
 uniform vec3 _LightColor = vec3(1.0);
 uniform vec3 _AmbientColor = vec3(0.3,0.4,0.46);
-
+uniform sampler2D normalMap;
 struct Material{
 	float Ka; //Ambient coefficient (0-1)
 	float Kd; //Diffuse coefficient (0-1)
@@ -21,6 +21,8 @@ struct Material{
 uniform Material _Material;
 
 void main(){
+    
+	//sample from normal map, put in -1 to one, multiply w tbn matrix to transform from tangent space to world space
 	//Make sure fragment normal is still length 1 after interpolation.
 	vec3 normal = normalize(fs_in.WorldNormal);
 	//Light pointing straight down

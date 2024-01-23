@@ -6,7 +6,7 @@ layout(location = 2) in vec2 vTexCoord;
 
 uniform mat4 _Model; 
 uniform mat4 _ViewProjection;
-
+//sample from normal map, put in -1 to one, multiply w tbn matrix to transform from tangent space to world space
 out Surface{
 	vec3 WorldPos; //Vertex position in world space
 	vec3 WorldNormal; //Vertex normal in world space
