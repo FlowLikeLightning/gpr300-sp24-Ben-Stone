@@ -36,10 +36,14 @@ struct Material {
 
 
 int main() {
+	//load assets here
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
-
+	//i need to load in normal and color map texture (color is color.jpg normal is normalgl.jpg)
+	GLuint normalTexture = ew::loadTexture("assets/Concrete042A_2K-JPG/Concrete042A_2K-JPG_NormalGL.jpg");
+	
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
+	
 	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
 	
 	glEnable(GL_CULL_FACE);
@@ -64,6 +68,7 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glBindTextureUnit(0, brickTexture);
+		glBindTextureUnit(1, normalTexture);
 		
 		shader.use();
 		shader.setFloat("_Material.Ka", material.Ka);
@@ -75,6 +80,8 @@ int main() {
 		shader.setMat4("_Model", glm::mat4(1.0f));
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
+		
+
 		monkeyModel.draw(); //Draws monkey model using current shader
 		cameraController.move(window, &camera, deltaTime);
 		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));

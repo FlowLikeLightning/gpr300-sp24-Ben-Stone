@@ -4,7 +4,10 @@ in Surface{
 	vec3 WorldPos; //Vertex position in world space
 	vec3 WorldNormal; //Vertex normal in world space
 	vec2 TexCoord;
+	mat3 TBN;
+
 }fs_in;
+
 
 uniform sampler2D _MainTex; 
 uniform vec3 _EyePos;
@@ -24,7 +27,11 @@ void main(){
     
 	//sample from normal map, put in -1 to one, multiply w tbn matrix to transform from tangent space to world space
 	//Make sure fragment normal is still length 1 after interpolation.
-	vec3 normal = normalize(fs_in.WorldNormal);
+	//vec3 normal = normalize(fs_in.WorldNormal);
+	vec3 normal = texture(normalMap,fs_in.TexCoord).rgb;
+	
+	normal = normalize(normal*2.0-1.0);
+	normal =normalize(fs_in.TBN*normal);
 	//Light pointing straight down
 	vec3 toLight = -_LightDirection;
 	float diffuseFactor = max(dot(normal,toLight),0.0);
@@ -37,5 +44,6 @@ void main(){
 	vec3 lightColor = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor) * _LightColor;
 	lightColor+=_AmbientColor * _Material.Ka;
 	vec3 objectColor = texture(_MainTex,fs_in.TexCoord).rgb;
+	
 	FragColor = vec4(objectColor * lightColor,1.0);
 }
