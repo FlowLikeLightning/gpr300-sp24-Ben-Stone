@@ -38,13 +38,14 @@ struct Material {
 int main() {
 	//load assets here
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
-	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
+	//Concrete042A_2K-JPG_Color.jpg
+	GLuint brickTexture = ew::loadTexture("assets/Concrete042A_2K-JPG_Color.jpg");
 	//i need to load in normal and color map texture (color is color.jpg normal is normalgl.jpg)
 	GLuint normalTexture = ew::loadTexture("assets/Concrete042A_2K-JPG/Concrete042A_2K-JPG_NormalGL.jpg");
 	
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	
-	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
+	ew::Model monkeyModel = ew::Model("assets/suzanne.fbx");
 	
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK); //Back face culling

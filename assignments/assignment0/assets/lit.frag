@@ -28,6 +28,8 @@ void main(){
 	//sample from normal map, put in -1 to one, multiply w tbn matrix to transform from tangent space to world space
 	//Make sure fragment normal is still length 1 after interpolation.
 	//vec3 normal = normalize(fs_in.WorldNormal);
+	//places to check: model loading code (making sure tangents are set (mesh load function making sure attribute is sent)) 
+	//
 	vec3 normal = texture(normalMap,fs_in.TexCoord).rgb;
 	
 	normal = normalize(normal*2.0-1.0);
@@ -45,5 +47,5 @@ void main(){
 	lightColor+=_AmbientColor * _Material.Ka;
 	vec3 objectColor = texture(_MainTex,fs_in.TexCoord).rgb;
 	
-	FragColor = vec4(objectColor * lightColor,1.0);
+	FragColor = vec4(objectColor * lightColor,1.0);//vec4(normal,1.0);
 }
