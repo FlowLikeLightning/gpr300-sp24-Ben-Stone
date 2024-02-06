@@ -8,7 +8,7 @@
 #include<ew/transform.h>
 #include<ew/cameraController.h>
 #include<ew/texture.h>
-
+#include<bstone/framebuffer.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -27,6 +27,7 @@ int screenWidth = 1080;
 int screenHeight = 720;
 float prevFrameTime;
 float deltaTime;
+
 struct Material {
 	float Ka = 1.0;
 	float Kd = 0.5;
@@ -36,9 +37,10 @@ struct Material {
 
 
 int main() {
-	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
+	GLFWwindow* window = initWindow("Assignment 1", screenWidth, screenHeight);
 	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
-	
+	ben::Framebuffer fb = ben::createFramebuffer(screenWidth, screenHeight, GL_RGB16F);
+
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Model monkeyModel = ew::Model("assets/ReStone.obj");
 	
@@ -51,6 +53,11 @@ int main() {
 	camera.fov = 60.0f; //Vertical field of view, in degrees
 
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+	//Initialization…
+	unsigned int dummyVAO;
+	glCreateVertexArrays(1, &dummyVAO);
+
+	
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -60,11 +67,16 @@ int main() {
 		prevFrameTime = time;
 
 		//RENDER
+		glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
+		glViewport(0, 0, fb.width, fb.height);
+		
+
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glBindTextureUnit(0, brickTexture);
-		
+		glBindVertexArray(dummyVAO);
+		//6 vertices for quad, 3 for triangle
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 		shader.use();
 		shader.setFloat("_Material.Ka", material.Ka);
 		shader.setFloat("_Material.Kd", material.Kd);
