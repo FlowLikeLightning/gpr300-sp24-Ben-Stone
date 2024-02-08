@@ -34,6 +34,12 @@ struct Material {
 	float Ks = 0.5;
 	float Shininess = 128;
 }material;
+struct ColorIntensity
+{
+	float rScale = 1.0;
+	float gScale = 1.0;
+	float bScale = 1.0;
+}colormod;
 
 
 int main() {
@@ -137,6 +143,7 @@ void drawUI() {
 		ImGui::SliderFloat("SpecularK", &material.Ks, 0.0f, 1.0f);
 		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
 	}
+	
 
 	ImGui::End();
 
