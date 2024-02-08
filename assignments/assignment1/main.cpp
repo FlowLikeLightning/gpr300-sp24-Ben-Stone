@@ -41,6 +41,7 @@ int main() {
 	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
 	ben::Framebuffer fb = ben::createFramebuffer(screenWidth, screenHeight, GL_RGB16F);
 
+	ew::Shader postProcess = ew::Shader("assets/bstonevert.vert", "assets/bstonefrag.frag");
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Model monkeyModel = ew::Model("assets/ReStone.obj");
 	
@@ -74,9 +75,7 @@ int main() {
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glBindTextureUnit(0, brickTexture);
-		glBindVertexArray(dummyVAO);
-		//6 vertices for quad, 3 for triangle
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		
 		shader.use();
 		shader.setFloat("_Material.Ka", material.Ka);
 		shader.setFloat("_Material.Kd", material.Kd);
@@ -87,9 +86,27 @@ int main() {
 		shader.setMat4("_Model", glm::mat4(1.0f));
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
+		
 		monkeyModel.draw(); //Draws monkey model using current shader
 		cameraController.move(window, &camera, deltaTime);
 		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
+		
+		//swap to post process shader
+		postProcess.use();
+		//fb.colorBuffer[0]=uniform sampler2D _ColorBuffer;// HOW DO I GET _ColorBuffer???????????????????????
+		
+		glBindTextureUnit(0, fb.colorBuffer[0]);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glViewport(0, 0, screenWidth, screenHeight);
+		
+		//fb issue 36054
+		//put framebuffer color texture into texture unit 0 and all that requires is line 77
+		//get colorbuffer texture assigned to sampler
+		
+		glBindVertexArray(dummyVAO);
+		//6 vertices for quad, 3 for triangle
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 		drawUI();
 
 

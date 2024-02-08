@@ -1,6 +1,7 @@
 #pragma once
 #include"framebuffer.h"
 #include"../ew/external/glad.h"
+#include<iostream>
 //heavy credit to LearnOpenGL FrameBuffer Tutorial
 
 namespace ben
@@ -14,18 +15,33 @@ namespace ben
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 		
-		unsigned int tex;
-		glGenTextures(1, &tex);
-		glBindTexture(GL_TEXTURE_2D, tex);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, colorFormat, GL_UNSIGNED_BYTE,nullptr);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+		unsigned int colTexture;
+		glGenTextures(1, &colTexture);
+		glBindTexture(GL_TEXTURE_2D, colTexture);
+		glTexStorage2D(GL_TEXTURE_2D, 1, colorFormat, width, height);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colTexture, 0);
 
-		unsigned int texcolbuffer;
-		glGenTextures(1, &texcolbuffer);
 		
+		unsigned int depthTexture;
+		glGenTextures(1, &depthTexture);
+		glBindTexture(GL_TEXTURE_2D, depthTexture);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT16, width, height);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture, 0);
 		
-		return Framebuffer();
+		Framebuffer fbtoRet;
+		fbtoRet.fbo = fbo;
+		fbtoRet.colorBuffer[0] = colTexture;
+		fbtoRet.depthBuffer = depthTexture;
+		fbtoRet.width = width;
+		fbtoRet.height = height;
+		GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (fboStatus != GL_FRAMEBUFFER_COMPLETE) {
+			printf("Framebuffer incomplete: %d", fboStatus);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+
+		return fbtoRet;
 	}
 }
