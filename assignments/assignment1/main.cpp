@@ -20,7 +20,7 @@ void drawUI();
 ew::Transform monkeyTransform;
 ew::CameraController cameraController;
 ew::Camera camera;
-
+ben::Framebuffer shadowfb;
 
 //Global state
 int screenWidth = 1080;
@@ -46,7 +46,8 @@ int main() {
 	GLFWwindow* window = initWindow("Assignment 1", screenWidth, screenHeight);
 	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
 	ben::Framebuffer fb = ben::createFramebuffer(screenWidth, screenHeight, GL_RGB16F);
-
+	ben::Framebuffer shadowfb = ben::createFramebuffer(screenHeight, screenHeight, GL_DEPTH_COMPONENT32);
+	ew::Shader shadowShader = ew::Shader("assets/shadow.vert", "assets/shadow.frag");
 	ew::Shader postProcess = ew::Shader("assets/bstonevert.vert", "assets/bstonefrag.frag");
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Model monkeyModel = ew::Model("assets/ReStone.obj");
@@ -99,16 +100,14 @@ int main() {
 		
 		//swap to post process shader
 		postProcess.use();
-		//fb.colorBuffer[0]=uniform sampler2D _ColorBuffer;// HOW DO I GET _ColorBuffer???????????????????????
-		
 		glBindTextureUnit(0, fb.colorBuffer[0]);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, screenWidth, screenHeight);
 		
-		//fb issue 36054
-		//put framebuffer color texture into texture unit 0 and all that requires is line 77
-		//get colorbuffer texture assigned to sampler
+
+
+
 		
 		glBindVertexArray(dummyVAO);
 		//6 vertices for quad, 3 for triangle
@@ -143,8 +142,16 @@ void drawUI() {
 		ImGui::SliderFloat("SpecularK", &material.Ks, 0.0f, 1.0f);
 		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
 	}
-	
-
+	ImGui::End();
+	ImGui::Begin("Shadow Map");
+	//Using a Child allow to fill all the space of the window.
+	ImGui::BeginChild("Shadow Map");
+	//Stretch image to be window size
+	ImVec2 windowSize = ImGui::GetWindowSize();
+	//Invert 0-1 V to flip vertically for ImGui display
+	//shadowMap is the texture2D handle
+	ImGui::Image((ImTextureID)shadowfb.depthBuffer, windowSize, ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::EndChild();
 	ImGui::End();
 
 	ImGui::Render();

@@ -6,7 +6,8 @@ layout(location = 2) in vec2 vTexCoord;
 
 uniform mat4 _Model; 
 uniform mat4 _ViewProjection;
-
+uniform mat4 _LightViewProjection;
+out vec4 LightSpacePos;
 out Surface{
 	vec3 WorldPos; //Vertex position in world space
 	vec3 WorldNormal; //Vertex normal in world space
@@ -14,6 +15,7 @@ out Surface{
 }vs_out;
 
 void main(){
+LightSpacePos = _LightViewProjection*_Model*vec4(vPos,1);
 	//Transform vertex position to World Space.
 vs_out.WorldPos = vec3(_Model * vec4(vPos,1.0));
 	//Transform vertex normal to world space using Normal Matrix
