@@ -8,7 +8,6 @@
 #include<ew/transform.h>
 #include<ew/cameraController.h>
 #include<ew/texture.h>
-//#include<bstone/framebuffer.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -30,6 +29,11 @@ int screenHeight = 720;
 float prevFrameTime;
 float deltaTime;
 
+struct Light
+{
+	glm::vec3 dir = glm::vec3(1, 0, 0); 
+	glm::vec3 col;
+}light;
 struct Material {
 	float Ka = 1.0;
 	float Kd = 0.5;
@@ -48,11 +52,11 @@ int main() {
 	GLFWwindow* window = initWindow("Assignment 2", screenWidth, screenHeight);
 	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
 	ben::Framebuffer fb = ben::createFramebuffer(screenWidth, screenHeight, GL_RGB16F);
-	ben::Framebuffer shadowfb = ben::createShadowFramebuffer(screenHeight, screenHeight, GL_DEPTH_COMPONENT32);
+	shadowfb = ben::createShadowFramebuffer(screenHeight, screenHeight, GL_DEPTH_COMPONENT32);
 	ew::Shader shadowShader = ew::Shader("assets/shadow.vert", "assets/shadow.frag");
 	ew::Shader postProcess = ew::Shader("assets/bstonevert.vert", "assets/bstonefrag.frag");
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
-	ew::Model monkeyModel = ew::Model("assets/ReStone.obj");
+	ew::Model monkeyModel = ew::Model("assets/Suzanne.obj");
 	
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK); //Back face culling
@@ -61,7 +65,18 @@ int main() {
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f); //Look at the center of the scene
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f; //Vertical field of view, in degrees
-
+	
+	//shadow cam
+	
+	//shadow cam posititon: determin pos of cam where when positioned, and it does lookat, the forward vector is the same position as light
+	
+	
+	shadowCam.orthographic = true;
+	shadowCam.target = glm::vec3(0.0f, 0.0f, 0.0f); //Look at the center of the scene
+	
+	shadowCam.aspectRatio = 1;
+	glm::mat4 viewmatrix = shadowCam.viewMatrix();
+	glm::mat4 projectionmatrix = shadowCam.projectionMatrix();
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	//Initialization…
 	unsigned int dummyVAO;
@@ -75,12 +90,19 @@ int main() {
 		float time = (float)glfwGetTime();
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
+		shadowCam.position = shadowCam.target - light.dir * 5.0f;//negative light direction
+		//Shadow
+		glBindFramebuffer(GL_FRAMEBUFFER, shadowfb.fbo);
+		glViewport(0, 0, shadowfb.width, shadowfb.height);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		shadowShader.use();
+		shadowShader.setMat4("_ViewProjection", shadowCam.projectionMatrix() * shadowCam.viewMatrix());
+		shadowShader.setMat4("_Model", monkeyTransform.modelMatrix());
+		monkeyModel.draw();
 
-		//RENDER
+		//Lighting
 		glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
 		glViewport(0, 0, fb.width, fb.height);
-		
-
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glBindTextureUnit(0, brickTexture);
@@ -93,16 +115,19 @@ int main() {
 
 		shader.setVec3("_EyePos", camera.position);
 		shader.setMat4("_Model", glm::mat4(1.0f));
+		shader.setVec3("_LightDirection", light.dir);
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
-		
 		monkeyModel.draw(); //Draws monkey model using current shader
 		cameraController.move(window, &camera, deltaTime);
 		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
 		
-		
+		//Post Process (currently Grayscale)
 		postProcess.use();
 		
+		
+
+
 		
 		glBindTextureUnit(0, fb.colorBuffer[0]);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -110,9 +135,11 @@ int main() {
 		glViewport(0, 0, screenWidth, screenHeight);
 		//TODO: for shadow mapping: 
 		/*
+		* 
 			setting up a camera with depth only shader.
 			set view projection uniform using shadow shader (in lit.frag)
 			set up light in main.cpp
+
 
 
 		*/
@@ -152,6 +179,11 @@ void drawUI() {
 		ImGui::SliderFloat("DiffuseK", &material.Kd, 0.0f, 1.0f);
 		ImGui::SliderFloat("SpecularK", &material.Ks, 0.0f, 1.0f);
 		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
+	}
+	if (ImGui::CollapsingHeader("Light"))
+	{
+		
+		ImGui::SliderFloat3("LightDirection",&light.dir.x,-1.0,1.0);
 	}
 
 	ImGui::End(); 
