@@ -32,8 +32,8 @@ float prevFrameTime;
 float deltaTime;
 struct Bias
 {
-	float minBias;
-	float maxBias;
+	float minBias = 0.001;
+	float maxBias = 0.015;
 }bias;
 struct Light
 {

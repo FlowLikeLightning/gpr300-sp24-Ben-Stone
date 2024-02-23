@@ -12,8 +12,8 @@ uniform vec3 _LightDirection = vec3(0.0,-1.0,0.0);
 uniform vec3 _LightColor = vec3(1.0);
 uniform vec3 _AmbientColor = vec3(0.3,0.4,0.46);
 in vec4 LightSpacePos;
-float minBias = 0.005; //Example values! 
-float maxBias = 0.015;
+uniform float minBias = 0.005; //Example values! 
+uniform float maxBias = 0.015;
 uniform sampler2D _ShadowMap;
 float bias; 
 struct Material{
@@ -32,7 +32,20 @@ float calcShadow(sampler2D shadowMap, vec4 lightSpacePos,float bias)
 	float myDepth = sampleCoord.z- bias; 
 	float shadowMapDepth = texture(shadowMap, sampleCoord.xy).r;
 	//step(a,b) returns 1.0 if a >= b, 0.0 otherwise
-	return step(shadowMapDepth,myDepth);
+	float totalShadow = 0;
+	vec2 texelOffset = 1.0 /  textureSize(_ShadowMap,0);
+	for(int y = -1; y <=1; y++)
+	{
+		for(int x = -1; x <=1; x++)
+		{
+			vec2 uv = sampleCoord.xy + vec2(x * texelOffset.x, y * texelOffset.y);
+			totalShadow+=step(texture(_ShadowMap,uv).r,myDepth);
+		}
+	}
+	totalShadow/=9.0;
+
+	
+	return totalShadow;
 
 }
 
