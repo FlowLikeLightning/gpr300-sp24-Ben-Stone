@@ -85,7 +85,7 @@ namespace ben
 		glBindTexture(GL_TEXTURE_2D, depthTexture);
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT16, width, height);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthTexture, 0);
-		
+		framebuffer.depthBuffer = depthTexture;
 		GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (fboStatus != GL_FRAMEBUFFER_COMPLETE) {
 			printf("Framebuffer incomplete: %d", fboStatus);

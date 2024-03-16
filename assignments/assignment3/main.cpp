@@ -22,6 +22,7 @@ ew::CameraController cameraController;
 ew::Camera camera;
 ew::Camera shadowCam;
 ew::Transform planeTransform;
+ew::Mesh sphereMesh;
 ew::Mesh planeMesh;
 ben::Framebuffer shadowfb;
 ben::Framebuffer gBuffer;
@@ -59,6 +60,14 @@ struct ColorIntensity
 	float gScale = 1.0;
 	float bScale = 1.0;
 }colormod;
+struct PointLight {
+	glm::vec3 position;
+	float radius;
+	glm::vec3 color;
+};
+const int MAX_POINT_LIGHTS = 64;
+PointLight pointLights[MAX_POINT_LIGHTS];
+//TODO: Initialize a bunch of lights with different positions and colors
 
 
 int main() {
@@ -69,12 +78,28 @@ int main() {
 	shadowfb = ben::createShadowFramebuffer(screenHeight, screenHeight, GL_DEPTH_COMPONENT32);
 	ew::Shader shadowShader = ew::Shader("assets/shadow.vert", "assets/shadow.frag");
 	ew::Shader postProcess = ew::Shader("assets/bstonevert.vert", "assets/bstonefrag.frag");
-	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
+	ew::Shader shader = ew::Shader("assets/defferedlit.vert", "assets/defferedlit.frag");
 	ew::Shader gShader = ew::Shader("assets/geopass.vert", "assets/geopass.frag");
-	//ew::Shader defShader = ew::Shader("assets/defferedlit.vert", "assets/defferedlit.frag");
+	ew::Shader loShader = ew::Shader("assets/lightorb.vert", "assets/lightorb.frag");
 	ew::Model monkeyModel = ew::Model("assets/Suzanne.obj");
-	planeMesh = ew::Mesh(ew::createPlane(10, 10, 5));
-	planeTransform.position = glm::vec3(0, -3, 0);
+	planeMesh = ew::Mesh(ew::createPlane(50, 50, 5));
+	sphereMesh = ew::Mesh(ew::createSphere(1.0f, 8));
+	int c = 0;
+	for (int z = 0; z < 8; z++)
+	{
+		for (int x = 0; x < 8; x++)
+		{
+			pointLights[c].position = glm::vec3(x * 5, 2.0f, z * 5);
+			c++;
+		}
+	}
+	for (int i = 0; i < MAX_POINT_LIGHTS; i++)
+	{
+		pointLights[i].radius = 8;
+		pointLights[i].color = glm::vec3(rand() % 2, rand() % 2, rand() % 2);
+	}
+
+	planeTransform.position = glm::vec3(18, -3, 18);
 	gBuffer = ben::createGBuffer(screenWidth, screenHeight);
 
 	
@@ -117,7 +142,7 @@ int main() {
 		prevFrameTime = time;
 		#pragma region Shadow
 		shadowCam.position = shadowCam.target - light.dir * 5.0f;//negative light direction
-		
+		glBindTextureUnit(0,brickTexture);
 		glBindFramebuffer(GL_FRAMEBUFFER, shadowfb.fbo);
 		glViewport(0, 0, shadowfb.width, shadowfb.height);
 		glClear(GL_DEPTH_BUFFER_BIT);
@@ -129,7 +154,7 @@ int main() {
 		//plane
 		shader.setMat4("_Model", planeTransform.modelMatrix());
 		planeMesh.draw();
-		#pragma endregion Shadow
+		#pragma endregion 
 
 		#pragma region Geopass
 		glBindFramebuffer(GL_FRAMEBUFFER, gBuffer.fbo);
@@ -139,9 +164,18 @@ int main() {
 		gShader.use();
 		gShader.setMat4("_LightViewProjection", shadowCam.projectionMatrix() * shadowCam.viewMatrix());
 		gShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
-		
 		gShader.setMat4("_Model", monkeyTransform.modelMatrix());
 		monkeyModel.draw();
+		monkeyTransform.position = glm::vec3(0.0, 0.0, 0.0);
+		for (int y = 0; y < 8; y++)
+		{
+			for (int x = 0; x < 8; x++)
+			{
+				monkeyTransform.position = glm::vec3(x * 5, 0, y * 5);
+				gShader.setMat4("_Model", monkeyTransform.modelMatrix());
+				monkeyModel.draw();
+			}
+		}
 		gShader.setMat4("_Model", planeTransform.modelMatrix());
 		planeMesh.draw();
 		#pragma endregion Geopass
@@ -151,10 +185,12 @@ int main() {
 		glViewport(0, 0, fb.width, fb.height);
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glBindTextureUnit(0, brickTexture);
-		glBindTextureUnit(1, shadowfb.depthBuffer);
 		
+		
+		glBindTextureUnit(1, shadowfb.depthBuffer);
+
 		shader.use();
+
 		shader.setFloat("minBias", bias.minBias);
 		shader.setFloat("maxBias", bias.maxBias);
 
@@ -162,6 +198,13 @@ int main() {
 		shader.setFloat("_Material.Kd", material.Kd);
 		shader.setFloat("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.Shininess", material.Shininess);
+		for (int i = 0; i < MAX_POINT_LIGHTS; i++) {
+			//Creates prefix "_PointLights[0]." etc
+			std::string prefix = "_PointLights[" + std::to_string(i) + "].";
+			shader.setVec3(prefix + "position", pointLights[i].position);
+			shader.setFloat(prefix + "radius", pointLights[i].radius);
+			shader.setVec3(prefix + "color", pointLights[i].color);
+		}
 
 		shader.setInt("_ShadowMap", 1);
 
@@ -172,15 +215,46 @@ int main() {
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		
 
-		shader.setMat4("_Model", monkeyTransform.modelMatrix());
-		monkeyModel.draw(); //Draws monkey model using current shader
-		#pragma endregion 
+		//shader.setMat4("_Model", monkeyTransform.modelMatrix());
+		glBindTextureUnit(0, gBuffer.colorBuffer[0]);
+		glBindTextureUnit(1, gBuffer.colorBuffer[1]);
+		glBindTextureUnit(2, gBuffer.colorBuffer[2]);
+		glBindTextureUnit(3, shadowfb.depthBuffer); //For shadow mapping
+
+		//monkeyModel.draw(); //Draws monkey model using current shader
+		 
 		//plane
-		shader.setMat4("_Model", planeTransform.modelMatrix());
-		planeMesh.draw();
+		//shader.setMat4("_Model", planeTransform.modelMatrix());
+		glBindVertexArray(dummyVAO);
+		//6 vertices for quad, 3 for triangle
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		//planeMesh.draw();
+		
+
+		#pragma endregion
 		cameraController.move(window, &camera, deltaTime);
 		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
-		
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.fbo); //Read from gBuffer 
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb.fbo); //Write to current fbo
+		glBlitFramebuffer(
+			0, 0, screenWidth, screenHeight, 0, 0, screenWidth, screenHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST
+		);
+
+		//Draw all light orbs
+		loShader.use();
+		loShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
+		for (int i = 0; i < MAX_POINT_LIGHTS; i++)
+		{
+			glm::mat4 m = glm::mat4(1.0f);
+
+			m = glm::translate(m, pointLights[i].position);
+			m = glm::scale(m, glm::vec3(0.2f)); //Whatever radius you want
+
+			loShader.setMat4("_Model", m);
+			loShader.setVec3("_Color", pointLights[i].color);
+			sphereMesh.draw();
+		}
+
 		
 
 		//Post Process (currently Grayscale)
