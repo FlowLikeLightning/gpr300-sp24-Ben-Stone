@@ -13,7 +13,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include<bstone/shadowmapfb.h>
-
+#include<bstone/gbuffer.h>
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
 void drawUI();
@@ -24,7 +24,14 @@ ew::Camera shadowCam;
 ew::Transform planeTransform;
 ew::Mesh planeMesh;
 ben::Framebuffer shadowfb;
-
+ben::Framebuffer gBuffer;
+//TODO: start w geopass (Render to imgui ;-;), then lighting pass, 
+//RENDER ORDER
+//shadow pass\/ 
+//geo pass (geopass vert attributes goes to geopass frag which goes indirectly to deffered frag)\/
+//deffered lighting pass(new modified lit.frag which renders gbuffers)\/
+// post process \/
+// UI
 //Global state
 int screenWidth = 1080;
 int screenHeight = 720;
@@ -56,20 +63,28 @@ struct ColorIntensity
 
 int main() {
 
-	GLFWwindow* window = initWindow("Assignment 2", screenWidth, screenHeight);
+	GLFWwindow* window = initWindow("Assignment 3", screenWidth, screenHeight);
 	GLuint brickTexture = ew::loadTexture("assets/brick_color.jpg");
 	ben::Framebuffer fb = ben::createFramebuffer(screenWidth, screenHeight, GL_RGB16F);
 	shadowfb = ben::createShadowFramebuffer(screenHeight, screenHeight, GL_DEPTH_COMPONENT32);
 	ew::Shader shadowShader = ew::Shader("assets/shadow.vert", "assets/shadow.frag");
 	ew::Shader postProcess = ew::Shader("assets/bstonevert.vert", "assets/bstonefrag.frag");
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
+	ew::Shader gShader = ew::Shader("assets/geopass.vert", "assets/geopass.frag");
+	//ew::Shader defShader = ew::Shader("assets/defferedlit.vert", "assets/defferedlit.frag");
 	ew::Model monkeyModel = ew::Model("assets/Suzanne.obj");
 	planeMesh = ew::Mesh(ew::createPlane(10, 10, 5));
 	planeTransform.position = glm::vec3(0, -3, 0);
+	gBuffer = ben::createGBuffer(screenWidth, screenHeight);
+
+	
+
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK); //Back face culling
 	glEnable(GL_DEPTH_TEST); //Depth testing
 	
+
+
 	#pragma region camera
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f); //Look at the center of the scene
@@ -100,8 +115,9 @@ int main() {
 		float time = (float)glfwGetTime();
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
-		shadowCam.position = shadowCam.target - light.dir * 5.0f;//negative light direction
 		#pragma region Shadow
+		shadowCam.position = shadowCam.target - light.dir * 5.0f;//negative light direction
+		
 		glBindFramebuffer(GL_FRAMEBUFFER, shadowfb.fbo);
 		glViewport(0, 0, shadowfb.width, shadowfb.height);
 		glClear(GL_DEPTH_BUFFER_BIT);
@@ -114,6 +130,21 @@ int main() {
 		shader.setMat4("_Model", planeTransform.modelMatrix());
 		planeMesh.draw();
 		#pragma endregion Shadow
+
+		#pragma region Geopass
+		glBindFramebuffer(GL_FRAMEBUFFER, gBuffer.fbo);
+		glViewport(0, 0, gBuffer.width, gBuffer.height);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		gShader.use();
+		gShader.setMat4("_LightViewProjection", shadowCam.projectionMatrix() * shadowCam.viewMatrix());
+		gShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
+		
+		gShader.setMat4("_Model", monkeyTransform.modelMatrix());
+		monkeyModel.draw();
+		gShader.setMat4("_Model", planeTransform.modelMatrix());
+		planeMesh.draw();
+		#pragma endregion Geopass
 		
 		#pragma region Lighting
 		glBindFramebuffer(GL_FRAMEBUFFER, fb.fbo);
@@ -216,6 +247,13 @@ void drawUI() {
 	ImGui::Image((ImTextureID)shadowfb.depthBuffer, windowSize, ImVec2(0, 1), ImVec2(1, 0));
 	ImGui::EndChild();
 	ImGui::End();
+	ImGui::Begin("GBuffers"); 
+		ImVec2 texSize = ImVec2(gBuffer.width / 4, gBuffer.height / 4);
+		for (size_t i = 0; i < 3; i++)
+		{
+			ImGui::Image((ImTextureID)gBuffer.colorBuffer[i], texSize, ImVec2(0, 1), ImVec2(1, 0));
+		}
+		ImGui::End();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

@@ -9,4 +9,5 @@ namespace ben
 		unsigned int height;
 	};
 	Framebuffer createFramebuffer(unsigned int width, unsigned int height, int colorFormat);
+	Framebuffer createGBuffer(unsigned int screenWidth, unsigned int screenHeight);
 }

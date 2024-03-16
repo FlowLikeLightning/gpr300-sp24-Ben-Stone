@@ -15,7 +15,7 @@ set(CORE_INC_DIR
  CACHE PATH "CORE INCLUDE SOURCE PATH"
 )
 
-add_library(core STATIC ${CORE_SRC} ${CORE_INC} "bstone/framebuffer.h" "bstone/shadowmapfb.h" "bstone/shadowmapfb.cpp")
+add_library(core STATIC ${CORE_SRC} ${CORE_INC} "bstone/framebuffer.h" "bstone/shadowmapfb.h" "bstone/shadowmapfb.cpp" "bstone/gbuffer.h" "bstone/gbuffer.cpp")
 
 find_package(OpenGL REQUIRED)
 
